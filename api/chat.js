@@ -1,70 +1,49 @@
-const https = require('https');
-
 const API_KEY = process.env.API_KEY;
 const HF_URL = "https://router.huggingface.co/v1/chat/completions";
-const HF_HOST = "router.huggingface.co";
-const HF_PATH = "/v1/chat/completions";
 
-module.exports = (req, res) => {
-    // CORS
+module.exports = async (req, res) => {
+    // CORS headers
     res.setHeader('Access-Control-Allow-Credentials', true);
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
     res.setHeader('Access-Control-Allow-Headers', 'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version');
 
     if (req.method === 'OPTIONS') {
-        res.writeHead(200);
-        res.end();
-        return;
+        return res.status(200).end();
     }
 
     if (req.method !== 'POST') {
-        res.writeHead(405, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ error: 'Method Not Allowed' }));
-        return;
+        return res.status(405).json({ error: 'Method Not Allowed' });
     }
 
     if (!API_KEY) {
-        res.writeHead(500, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ error: 'API_KEY missing on server' }));
-        return;
+        return res.status(500).json({ error: 'API_KEY missing on server' });
     }
 
-    // Read raw body from the request stream
-    let rawBody = '';
-    req.on('data', chunk => rawBody += chunk.toString());
-    req.on('error', err => {
-        res.writeHead(500, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ error: 'Failed to read request: ' + err.message }));
-    });
-    req.on('end', () => {
-        const options = {
-            hostname: HF_HOST,
-            path: HF_PATH,
+    try {
+        // Vercel handles body parsing automatically in Node.js runtime. 
+        // We just need to stringify it back for the HF request.
+        const body = JSON.stringify(req.body);
+
+        const response = await fetch(HF_URL, {
             method: 'POST',
             headers: {
                 'Authorization': `Bearer ${API_KEY}`,
-                'Content-Type': 'application/json',
-                'Content-Length': Buffer.byteLength(rawBody)
-            }
-        };
-
-        const proxyReq = https.request(options, proxyRes => {
-            let data = '';
-            proxyRes.on('data', chunk => data += chunk);
-            proxyRes.on('end', () => {
-                res.writeHead(proxyRes.statusCode, { 'Content-Type': 'application/json' });
-                res.end(data);
-            });
+                'Content-Type': 'application/json'
+            },
+            body: body
         });
 
-        proxyReq.on('error', err => {
-            console.error('Proxy error:', err);
-            res.writeHead(500, { 'Content-Type': 'application/json' });
-            res.end(JSON.stringify({ error: err.message }));
-        });
+        const data = await response.json();
 
-        proxyReq.write(rawBody);
-        proxyReq.end();
-    });
+        if (!response.ok) {
+            console.error('Hugging Face Error:', data);
+            return res.status(response.status).json(data);
+        }
+
+        return res.status(200).json(data);
+    } catch (error) {
+        console.error('Serverless Function Error:', error);
+        return res.status(500).json({ error: 'Internal Server Error', message: error.message });
+    }
 };
