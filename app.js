@@ -1,5 +1,5 @@
 ﻿// CONFIG
-var MODEL = "Qwen/Qwen2.5-7B-Instruct";
+var MODEL = "microsoft/Phi-3-mini-4k-instruct";
 var API_URL = "/api/chat";
 
 // STATE
