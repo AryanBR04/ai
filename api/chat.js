@@ -1,5 +1,6 @@
 const API_KEY = process.env.API_KEY;
-const HF_URL = "https://router.huggingface.co/v1/chat/completions";
+// Using the direct inference endpoint instead of the router for better stability
+const HF_URL = "https://api-inference.huggingface.co/models/microsoft/Phi-3-mini-4k-instruct/v1/chat/completions";
 
 module.exports = async (req, res) => {
     // CORS headers
@@ -21,7 +22,6 @@ module.exports = async (req, res) => {
     }
 
     try {
-        // In Vercel Node.js runtime, req.body is already parsed for application/json
         const response = await fetch(HF_URL, {
             method: 'POST',
             headers: {
@@ -34,6 +34,7 @@ module.exports = async (req, res) => {
         const data = await response.json();
 
         if (!response.ok) {
+            console.error('Hugging Face Error:', data);
             return res.status(response.status).json(data);
         }
 
