@@ -17,49 +17,29 @@ module.exports = async (req, res) => {
     }
 
     if (!API_KEY) {
-        return res.status(500).json({ error: 'API_KEY missing on server' });
+        return res.status(500).json({ error: 'API_KEY missing on server side.' });
     }
 
     try {
-        let bodyData = req.body;
-
-        // Defensive check: if req.body is not parsed, parse it manually
-        if (!bodyData || typeof bodyData !== 'object') {
-            const rawBody = await new Promise((resolve, reject) => {
-                let data = '';
-                req.on('data', chunk => data += chunk);
-                req.on('end', () => resolve(data));
-                req.on('error', reject);
-            });
-            try {
-                bodyData = JSON.parse(rawBody);
-            } catch (e) {
-                console.error("JSON Parse Error:", rawBody);
-                return res.status(400).json({ error: "Invalid JSON body", raw: rawBody });
-            }
-        }
-
-        const body = JSON.stringify(bodyData);
-
+        // In Vercel Node.js runtime, req.body is already parsed for application/json
         const response = await fetch(HF_URL, {
             method: 'POST',
             headers: {
                 'Authorization': `Bearer ${API_KEY}`,
                 'Content-Type': 'application/json'
             },
-            body: body
+            body: JSON.stringify(req.body)
         });
 
         const data = await response.json();
 
         if (!response.ok) {
-            console.error('Hugging Face Error:', data);
             return res.status(response.status).json(data);
         }
 
         return res.status(200).json(data);
     } catch (error) {
-        console.error('Serverless Function Error:', error);
+        console.error('Serverless error:', error);
         return res.status(500).json({ error: 'Internal Server Error', message: error.message });
     }
 };
