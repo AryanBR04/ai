@@ -199,26 +199,36 @@ async function callAPI(msgs) {
     });
 
     var attempt = async function () {
-        var r = await fetch(API_URL, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: body
-        });
-        if (!r.ok) {
-            var d = await r.json().catch(function () { return {}; });
-            if (r.status === 503) return null;
-            if (r.status === 401) throw new Error("Invalid API key.");
-            if (r.status === 429) throw new Error("Rate limit hit. Wait a moment and retry.");
-            throw new Error(d.error || ("API error " + r.status));
+        var controller = new AbortController();
+        var timer = setTimeout(function () { controller.abort(); }, 55000); // 55s timeout
+        try {
+            var r = await fetch(API_URL, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: body,
+                signal: controller.signal
+            });
+            clearTimeout(timer);
+            if (!r.ok) {
+                var d = await r.json().catch(function () { return {}; });
+                if (r.status === 503) return null;
+                if (r.status === 401) throw new Error("Invalid API key.");
+                if (r.status === 429) throw new Error("Rate limit hit. Wait a moment and retry.");
+                throw new Error(d.error || ("API error " + r.status));
+            }
+            return r;
+        } catch (e) {
+            clearTimeout(timer);
+            if (e.name === "AbortError") throw new Error("Request timed out. The AI model is loading — please try again in 30 seconds.");
+            throw e;
         }
-        return r;
     };
 
     var res = await attempt();
     if (!res) {
-        await new Promise(function (r) { setTimeout(r, 10000); });
+        await new Promise(function (r) { setTimeout(r, 8000); });
         res = await attempt();
-        if (!res) throw new Error("Model still loading. Wait 20 s then retry.");
+        if (!res) throw new Error("Model is warming up. Please try again in 30 seconds.");
     }
 
     var data = await res.json();
