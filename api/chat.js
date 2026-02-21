@@ -25,13 +25,27 @@ module.exports = async (req, res) => {
     }
 
     try {
+        // Manually parse body since Vercel doesn't auto-parse it for all runtimes
+        let bodyData = req.body;
+        if (!bodyData || typeof bodyData !== 'object') {
+            const rawBody = await new Promise((resolve, reject) => {
+                let data = '';
+                req.on('data', chunk => data += chunk);
+                req.on('end', () => resolve(data));
+                req.on('error', reject);
+            });
+            try { bodyData = JSON.parse(rawBody); } catch (e) { bodyData = {}; }
+        }
+        console.log("Body model:", bodyData && bodyData.model);
+        console.log("Body messages count:", bodyData && bodyData.messages && bodyData.messages.length);
+
         const response = await fetch(HF_URL, {
             method: 'POST',
             headers: {
                 'Authorization': `Bearer ${API_KEY}`,
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify(req.body)
+            body: JSON.stringify(bodyData)
         });
 
         const data = await response.json();
