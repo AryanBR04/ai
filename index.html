@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NeuraChat</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+
+<body>
+
+  <div class="app-layout">
+
+    <!-- SIDEBAR -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-top">
+        <button class="new-chat-btn" id="newChatBtn">
+          <span class="plus-icon">+</span> New Chat
+        </button>
+        <button class="icon-btn" id="sidebarClose" title="Close sidebar">&#9776;</button>
+      </div>
+      <div class="history-label">Recent</div>
+      <div class="history-list" id="historyList"></div>
+      <div class="sidebar-bottom">
+        <div class="model-info">
+          <span class="dot"></span> Zephyr-7B via HuggingFace
+        </div>
+      </div>
+    </aside>
+
+    <!-- MAIN -->
+    <div class="main" id="main">
+
+      <!-- TOP BAR -->
+      <header class="topbar">
+        <button class="icon-btn" id="sidebarOpen" title="Open sidebar">&#9776;</button>
+        <span class="brand">NeuraChat</span>
+        <button class="icon-btn danger" id="clearBtn" title="Clear chat">&#128465;</button>
+      </header>
+
+      <!-- MESSAGES -->
+      <div class="messages" id="messages">
+
+        <!-- Welcome -->
+        <div class="welcome" id="welcome">
+          <div class="welcome-icon">
+            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path
+                d="M12 2C7.58 2 4 5.58 4 10V14C4 15.1 4.9 16 6 16H8V11H6V10C6 6.69 8.69 4 12 4C15.31 4 18 6.69 18 10V11H16V16H18C19.1 16 20 15.1 20 14V10C20 5.58 16.42 2 12 2Z"
+                fill="url(#botGrad)" />
+              <rect x="7" y="12" width="10" height="8" rx="2" fill="url(#botGrad)" />
+              <circle cx="10" cy="15" r="1" fill="white" />
+              <circle cx="14" cy="15" r="1" fill="white" />
+              <path d="M11 18H13V19H11V18Z" fill="white" opacity="0.6" />
+              <defs>
+                <linearGradient id="botGrad" x1="4" y1="2" x2="20" y2="20" gradientUnits="userSpaceOnUse">
+                  <stop stop-color="#10a37f" />
+                  <stop offset="1" stop-color="#0d8a6b" />
+                </linearGradient>
+              </defs>
+            </svg>
+          </div>
+          <h1>How can I help you today?</h1>
+          <p>Powered by Zephyr-7B on Hugging Face</p>
+          <div class="suggestions">
+            <button class="sug-card" onclick="useSuggestion(this)">
+              <b>Write a cover letter</b><span>for a software engineer role</span>
+            </button>
+            <button class="sug-card" onclick="useSuggestion(this)">
+              <b>Explain quantum computing</b><span>in simple terms</span>
+            </button>
+            <button class="sug-card" onclick="useSuggestion(this)">
+              <b>Debug my code</b><span>describe the error and paste it</span>
+            </button>
+            <button class="sug-card" onclick="useSuggestion(this)">
+              <b>Summarize a topic</b><span>give me a quick overview</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Chat messages injected here -->
+        <div id="chatMessages"></div>
+      </div>
+
+      <!-- INPUT -->
+      <div class="input-wrap">
+        <div class="input-box">
+          <textarea id="userInput" placeholder="Message NeuraChat..." rows="1"></textarea>
+          <button class="send-btn" id="sendBtn" disabled>
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5">
+              <line x1="22" y1="2" x2="11" y2="13" />
+              <polygon points="22 2 15 22 11 13 2 9 22 2" />
+            </svg>
+          </button>
+        </div>
+        <p class="disclaimer">NeuraChat may make mistakes. Verify important information.</p>
+      </div>
+
+    </div>
+  </div>
+
+  <div id="contextMenu" class="context-menu">
+    <button id="deleteChatItem">Delete Chat</button>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+
+</html>
