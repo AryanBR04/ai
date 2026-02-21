@@ -34,13 +34,16 @@ module.exports = async (req, res) => {
         };
 
         const proxyReq = https.request(HF_URL, options, (proxyRes) => {
-            res.status(proxyRes.statusCode);
-            res.setHeader('Content-Type', 'application/json');
-            proxyRes.pipe(res);
+            let resBody = '';
+            proxyRes.on('data', chunk => resBody += chunk);
+            proxyRes.on('end', () => {
+                res.status(proxyRes.statusCode).json(JSON.parse(resBody || '{}'));
+            });
         });
 
         proxyReq.on('error', (e) => {
-            res.status(500).json({ error: e.message });
+            console.error("Proxy Request Error:", e);
+            res.status(500).json({ error: e.message, details: "Failed to connect to Hugging Face" });
         });
 
         proxyReq.write(body);
