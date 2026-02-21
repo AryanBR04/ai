@@ -21,9 +21,25 @@ module.exports = async (req, res) => {
     }
 
     try {
-        // Vercel handles body parsing automatically in Node.js runtime. 
-        // We just need to stringify it back for the HF request.
-        const body = JSON.stringify(req.body);
+        let bodyData = req.body;
+
+        // Defensive check: if req.body is not parsed, parse it manually
+        if (!bodyData || typeof bodyData !== 'object') {
+            const rawBody = await new Promise((resolve, reject) => {
+                let data = '';
+                req.on('data', chunk => data += chunk);
+                req.on('end', () => resolve(data));
+                req.on('error', reject);
+            });
+            try {
+                bodyData = JSON.parse(rawBody);
+            } catch (e) {
+                console.error("JSON Parse Error:", rawBody);
+                return res.status(400).json({ error: "Invalid JSON body", raw: rawBody });
+            }
+        }
+
+        const body = JSON.stringify(bodyData);
 
         const response = await fetch(HF_URL, {
             method: 'POST',
