@@ -1,6 +1,6 @@
 ﻿// CONFIG
 var MODEL = "Qwen/Qwen2.5-7B-Instruct";
-var API_URL = "/api";
+var API_URL = "/api/chat";
 
 // STATE
 var messageHistory = [];
