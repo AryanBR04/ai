@@ -1,7 +1,11 @@
+const https = require('https');
+
 const API_KEY = process.env.API_KEY;
 const HF_URL = "https://router.huggingface.co/v1/chat/completions";
+const HF_HOST = "router.huggingface.co";
+const HF_PATH = "/v1/chat/completions";
 
-module.exports = async (req, res) => {
+module.exports = (req, res) => {
     // CORS
     res.setHeader('Access-Control-Allow-Credentials', true);
     res.setHeader('Access-Control-Allow-Origin', '*');
@@ -9,58 +13,58 @@ module.exports = async (req, res) => {
     res.setHeader('Access-Control-Allow-Headers', 'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version');
 
     if (req.method === 'OPTIONS') {
-        return res.status(200).end();
+        res.writeHead(200);
+        res.end();
+        return;
     }
 
     if (req.method !== 'POST') {
-        return res.status(405).json({ error: 'Method Not Allowed' });
+        res.writeHead(405, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Method Not Allowed' }));
+        return;
     }
-
-    console.log("Incoming request body type:", typeof req.body);
-    console.log("API_KEY present:", !!API_KEY);
-    if (API_KEY) console.log("API_KEY starts with:", API_KEY.substring(0, 5) + "...");
 
     if (!API_KEY) {
-        return res.status(500).json({ error: "API_KEY is missing on Vercel side." });
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'API_KEY missing on server' }));
+        return;
     }
 
-    try {
-        // Manually parse body since Vercel doesn't auto-parse it for all runtimes
-        let bodyData = req.body;
-        if (!bodyData || typeof bodyData !== 'object') {
-            const rawBody = await new Promise((resolve, reject) => {
-                let data = '';
-                req.on('data', chunk => data += chunk);
-                req.on('end', () => resolve(data));
-                req.on('error', reject);
-            });
-            try { bodyData = JSON.parse(rawBody); } catch (e) { bodyData = {}; }
-        }
-        console.log("Body model:", bodyData && bodyData.model);
-        console.log("Body messages count:", bodyData && bodyData.messages && bodyData.messages.length);
-
-        const response = await fetch(HF_URL, {
+    // Read raw body from the request stream
+    let rawBody = '';
+    req.on('data', chunk => rawBody += chunk.toString());
+    req.on('error', err => {
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Failed to read request: ' + err.message }));
+    });
+    req.on('end', () => {
+        const options = {
+            hostname: HF_HOST,
+            path: HF_PATH,
             method: 'POST',
             headers: {
                 'Authorization': `Bearer ${API_KEY}`,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(bodyData)
+                'Content-Type': 'application/json',
+                'Content-Length': Buffer.byteLength(rawBody)
+            }
+        };
+
+        const proxyReq = https.request(options, proxyRes => {
+            let data = '';
+            proxyRes.on('data', chunk => data += chunk);
+            proxyRes.on('end', () => {
+                res.writeHead(proxyRes.statusCode, { 'Content-Type': 'application/json' });
+                res.end(data);
+            });
         });
 
-        const data = await response.json();
-
-        if (!response.ok) {
-            console.error("Hugging Face Error:", data);
-            return res.status(response.status).json(data);
-        }
-
-        return res.status(200).json(data);
-    } catch (error) {
-        console.error("Serverless Function Error:", error);
-        return res.status(500).json({
-            error: "Internal Server Error",
-            message: error.message
+        proxyReq.on('error', err => {
+            console.error('Proxy error:', err);
+            res.writeHead(500, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: err.message }));
         });
-    }
+
+        proxyReq.write(rawBody);
+        proxyReq.end();
+    });
 };
